@@ -36,7 +36,8 @@ body {
    ================================== */
 .overlay-container {
   width: 320px; 
-  height: 300px;
+  min-height: 400px;
+  height: auto;
   background: var(--overlay-bg); 
   border-radius: 16px; 
   padding: 16px;

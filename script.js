@@ -1,19 +1,32 @@
 const PLAYERS_KEY = 'weflab_teams';
 const HISTORY_KEY = 'weflab_history';
+const MATCHES_KEY = 'weflab_matches';
+const MAPS = ['에란겔', '미라마', '비켄디', '사녹', '태이고', '론도', '데스턴'];
 
 let historyData = [];
 
+// 라운드별 킬수 저장을 위한 매치 데이터
+let matches = JSON.parse(localStorage.getItem(MATCHES_KEY)) || [];
+
 // 1번: baseKillsPos (수동 양수), baseKillsNeg (수동 음수) 추가 구조화
 let teams = JSON.parse(localStorage.getItem(PLAYERS_KEY)) || [
-    { id: 1, name: "A팀", label: "목표킬", players: ["선수A1", "선수A2", "선수A3", "선수A4"], baseKillsPos: [0,0,0,0], baseKillsNeg: [0,0,0,0] },
-    { id: 2, name: "B팀", label: "목표킬", players: ["선수B1", "선수B2", "선수B3", "선수B4"], baseKillsPos: [0,0,0,0], baseKillsNeg: [0,0,0,0] }
+    { id: 1, name: "A팀", target: "50", label: "목표킬", players: ["선수A1", "선수A2", "선수A3", "선수A4"], baseKillsPos: [0,0,0,0], baseKillsNeg: [0,0,0,0] },
+    { id: 2, name: "B팀", target: "50", label: "목표킬", players: ["선수B1", "선수B2", "선수B3", "선수B4"], baseKillsPos: [0,0,0,0], baseKillsNeg: [0,0,0,0] }
 ];
 
-// 하위 호환: 기존 teams 데이터 구조 변환 및 라벨 속성 추가
+// 하위 호환: 기존 teams 데이터 구조 변환 및 라벨/타겟/배열길이(12명) 속성 처리
 teams = teams.map(t => {
     if(t.label === undefined) t.label = "목표킬";
-    if(!t.baseKillsPos) t.baseKillsPos = [0, 0, 0, 0];
-    if(!t.baseKillsNeg) t.baseKillsNeg = [0, 0, 0, 0];
+    if(t.target === undefined) t.target = "50";
+    if(!t.players) t.players = [];
+    if(!t.baseKillsPos) t.baseKillsPos = [];
+    if(!t.baseKillsNeg) t.baseKillsNeg = [];
+    
+    while(t.players.length < 12) {
+        t.players.push("");
+        t.baseKillsPos.push(0);
+        t.baseKillsNeg.push(0);
+    }
     return t;
 });
 
@@ -47,22 +60,11 @@ function renderConfigPanels() {
         overlay.innerHTML = `
             <div class="goal-section">
                 <div class="team-name-tag" id="team-name-display-${t.id}">${t.name}</div>
-                <div class="goal-text"><span id="team-label-display-${t.id}">${t.label}</span> <span id="team-total-${t.id}">0</span></div>
+                <div class="goal-text"><span id="team-label-display-${t.id}">${t.label}</span>: <span id="team-target-display-${t.id}">${t.target || '0'}</span></div>
+                <div style="font-size:22px; color:#10b981; font-weight:800; margin-top:8px;">합산킬: <span id="team-total-${t.id}">0</span></div>
             </div>
             <div class="player-summary" id="summary-${t.id}"></div>
-            <div class="history-section" id="hist-sec-${t.id}">
-                <table>
-                    <thead>
-                        <tr>
-                            <th width="75">닉네임</th>
-                            <th width="65">계산결과</th>
-                            <th width="50">반영값</th>
-                            <th width="60">누적합계</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbody-${t.id}"></tbody>
-                </table>
-            </div>
+            <div class="history-section" id="hist-sec-${t.id}"></div>
         `;
         overlaysWrap.appendChild(overlay);
 
@@ -71,7 +73,7 @@ function renderConfigPanels() {
         
         // 제자리에서 수정 가능한 양수(+) / 음수(-) 두 개의 입력칸 삽입
         let playersHtml = '';
-        for(let i=0; i<4; i++) {
+        for(let i=0; i<12; i++) {
             playersHtml += `
                 <div style="display:flex; gap:2px; align-items:center;">
                     <input type="text" id="p${i}-${t.id}" class="p-name-input" placeholder="SOOP 닉네임" value="${t.players[i] || ''}" style="margin:0; flex:1;" oninput="syncTeamData(${t.id})">
@@ -84,7 +86,8 @@ function renderConfigPanels() {
         ctrl.innerHTML = `
             <div class="team-header" style="justify-content:flex-start; gap:8px;">
                 <input type="text" class="team-name-input" id="tname-${t.id}" value="${t.name}" placeholder="팀 이름" style="width:110px;" oninput="syncTeamData(${t.id})">
-                <input type="text" class="p-name-input" id="tlabel-${t.id}" value="${t.label}" placeholder="타이틀 (예: 목표킬)" style="width:130px; margin:0;" oninput="syncTeamData(${t.id})">
+                <input type="text" class="p-name-input" id="tlabel-${t.id}" value="${t.label}" placeholder="타이틀" style="width:80px; margin:0;" oninput="syncTeamData(${t.id})">
+                <input type="text" class="p-name-input" id="ttarget-${t.id}" value="${t.target || ''}" placeholder="점수" style="width:50px; margin:0;" oninput="syncTeamData(${t.id})">
                 <button class="btn danger sm" style="margin-left:auto;" onclick="removeTeam(${t.id})">삭제</button>
             </div>
             <div class="player-inputs">
@@ -94,7 +97,91 @@ function renderConfigPanels() {
         controlsWrap.appendChild(ctrl);
     });
     
+    // 매치 패널 렌더링
+    renderMatches();
     recalculateAndRender();
+}
+
+function renderMatches() {
+    const wrapper = document.getElementById('matches-wrapper');
+    if (!wrapper) return;
+    wrapper.innerHTML = '';
+    
+    // 현재 활성화된(이름이 있는) 모든 선수 추출
+    const activePlayers = [];
+    teams.forEach(t => {
+        t.players.forEach(p => {
+            if(p.trim() !== '') activePlayers.push(p);
+        });
+    });
+    
+    matches.forEach((m, index) => {
+        const ctrl = document.createElement('div');
+        ctrl.className = 'team-control-card';
+        ctrl.style.borderColor = '#8b5cf6';
+        
+        let mapOptions = MAPS.map(mapName => `<option value="${mapName}" ${m.map === mapName ? 'selected' : ''}>${mapName}</option>`).join('');
+        
+        let playerInputs = '';
+        activePlayers.forEach(p => {
+            let pScore = m.scores && m.scores[p] !== undefined ? m.scores[p] : '';
+            playerInputs += `
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <span style="flex:1; font-size:14px;">${p}</span>
+                    <input type="number" id="mscore-${m.id}-${p}" class="p-name-input" value="${pScore}" placeholder="킬수" style="width:50px; margin:0;" min="0" oninput="syncMatchData(${m.id})">
+                </div>
+            `;
+        });
+        
+        ctrl.innerHTML = `
+            <div class="team-header" style="justify-content:space-between; gap:10px;">
+                <span style="font-size:14px; font-weight:bold; color:#8b5cf6;">${index+1}라운드</span>
+                <select id="mmap-${m.id}" class="team-name-input" style="width:100px; font-size:14px; margin:0;" onchange="syncMatchData(${m.id})">
+                    ${mapOptions}
+                </select>
+                <button class="btn danger sm" style="margin-left:auto;" onclick="removeMatch(${m.id})">판 삭제</button>
+            </div>
+            <div class="player-inputs" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+                ${activePlayers.length > 0 ? playerInputs : '<span style="font-size:12px;color:#aaa;">선수 닉네임을 설정해주세요.</span>'}
+            </div>
+        `;
+        wrapper.appendChild(ctrl);
+    });
+}
+
+window.syncMatchData = function(id) {
+    const m = matches.find(x => x.id === id);
+    if(m) {
+        m.map = document.getElementById(`mmap-${m.id}`).value;
+        const activePlayers = [];
+        teams.forEach(t => t.players.forEach(p => { if(p.trim() !== '') activePlayers.push(p); }));
+        
+        m.scores = {};
+        activePlayers.forEach(p => {
+            const inputEl = document.getElementById(`mscore-${m.id}-${p}`);
+            if(inputEl && inputEl.value !== '') {
+                m.scores[p] = parseInt(inputEl.value) || 0;
+            }
+        });
+        localStorage.setItem(MATCHES_KEY, JSON.stringify(matches));
+        recalculateAndRender();
+    }
+}
+
+document.getElementById('add-match-btn').addEventListener('click', () => {
+    let newId = Date.now();
+    matches.push({ id: newId, map: "에란겔", scores: {} });
+    localStorage.setItem(MATCHES_KEY, JSON.stringify(matches));
+    renderMatches();
+});
+
+window.removeMatch = function(id) {
+    if(confirm("이 판(라운드) 패널을 삭제하시겠습니까?")) {
+        matches = matches.filter(m => m.id !== id);
+        localStorage.setItem(MATCHES_KEY, JSON.stringify(matches));
+        renderMatches();
+        recalculateAndRender();
+    }
 }
 
 // ========================
@@ -106,7 +193,10 @@ window.syncTeamData = function(teamId) {
         const labelEl = document.getElementById(`tlabel-${t.id}`);
         if(labelEl) t.label = labelEl.value.trim();
         
-        for(let i=0; i<4; i++) {
+        const targetEl = document.getElementById(`ttarget-${t.id}`);
+        if(targetEl) t.target = targetEl.value.trim();
+        
+        for(let i=0; i<12; i++) {
             t.players[i] = document.getElementById(`p${i}-${t.id}`).value.trim();
             t.baseKillsPos[i] = parseInt(document.getElementById(`bp${i}-${t.id}`).value) || 0;
             t.baseKillsNeg[i] = parseInt(document.getElementById(`bn${i}-${t.id}`).value) || 0;
@@ -117,17 +207,28 @@ window.syncTeamData = function(teamId) {
         // 오버레이 상단 직접 갱신 (포커스 유지용)
         const nameDisp = document.getElementById(`team-name-display-${t.id}`);
         const labelDisp = document.getElementById(`team-label-display-${t.id}`);
+        const targetDisp = document.getElementById(`team-target-display-${t.id}`);
         
         if(nameDisp) nameDisp.textContent = t.name;
         if(labelDisp) labelDisp.textContent = t.label;
+        if(targetDisp) targetDisp.textContent = t.target || '0';
         
+        renderMatchInputPanel(); // 팀 멤버 변동 시 매치 패널 갱신
         recalculateAndRender();
     }
 }
 
 document.getElementById('add-team-btn').addEventListener('click', () => {
     let newId = Date.now();
-    teams.push({ id: newId, name: `새로운 팀`, label: "목표킬", players: ["", "", "", ""], baseKillsPos: [0, 0, 0, 0], baseKillsNeg: [0, 0, 0, 0] });
+    teams.push({ 
+        id: newId, 
+        name: `새로운 팀`, 
+        target: "50", 
+        label: "목표킬", 
+        players: Array(12).fill(""), 
+        baseKillsPos: Array(12).fill(0), 
+        baseKillsNeg: Array(12).fill(0) 
+    });
     renderConfigPanels();
 });
 
@@ -142,13 +243,18 @@ window.removeTeam = function(id) {
 // 강제 초기화 버튼 (history 날림)
 document.getElementById('save-all-btn').addEventListener('click', () => {
     teams.forEach(t => window.syncTeamData(t.id));
+    matches.forEach(m => window.syncMatchData(m.id));
     
-    // 이력 삭제
-    historyData = [];
-    localStorage.removeItem(HISTORY_KEY);
-    
-    renderConfigPanels();
-    alert('팀 설정 저장 및 킬 이력이 초기화되었습니다.');
+    if(confirm("모든 누적 킬수(위플랩) 및 이력을 완전히 초기화하시겠습니까? (팀, 라운드 세팅만 남습니다)")) {
+        // 이력 삭제
+        historyData = [];
+        localStorage.removeItem(HISTORY_KEY);
+        matches = [];
+        localStorage.removeItem(MATCHES_KEY);
+        
+        renderConfigPanels();
+        alert('이력이 모두 삭제되고 새 경기가 시작되었습니다.');
+    }
 });
 
 // ========================
@@ -221,8 +327,22 @@ function recalculateAndRender() {
     // 설정된 모든 선수 이름 수집
     const allConfiguredNames = Object.keys(playerPos);
     
+    // 매치 패널 킬수 합산 (실시간 반영)
+    matches.forEach(m => {
+        if(m.scores) {
+            Object.keys(m.scores).forEach(p => {
+                const k = parseInt(m.scores[p]) || 0;
+                if(playerPos[p] !== undefined && k > 0) {
+                    playerPos[p] += k;
+                }
+            });
+        }
+    });
+
     historyData.forEach(item => {
-        // 위플랩 수신 데이터의 닉네임을 설정된 한글 닉네임과 유연하게 매칭
+        if (item.type === 'match') return; // 과거 기록 잔재 무시
+        
+        // 과거 Weflab 단일 데이터 처리
         const matchedPlayerName = matchNickname(item.nickname, allConfiguredNames);
         
         if (matchedPlayerName && playerPos[matchedPlayerName] !== undefined) {
@@ -236,28 +356,6 @@ function recalculateAndRender() {
             } else if (appliedValue < 0) {
                 playerNeg[matchedPlayerName] += Math.abs(appliedValue);
             }
-            
-            const totalSoFar = playerPos[matchedPlayerName] - playerNeg[matchedPlayerName];
-            
-            let attachedTeamId = null;
-            teams.forEach(t => { if(t.players.includes(matchedPlayerName)) attachedTeamId = t.id; });
-            
-            if(attachedTeamId) {
-                const tbody = document.getElementById(`tbody-${attachedTeamId}`);
-                if(tbody) {
-                    const tr = document.createElement('tr');
-                    const displayApplied = appliedValue >= 0 ? '+' + appliedValue : appliedValue;
-                    const applyColor = appliedValue > 0 ? '#3b82f6' : (appliedValue < 0 ? '#ef4444' : '#aaa');
-                    
-                    tr.innerHTML = `
-                        <td>${matchedPlayerName}</td>
-                        <td style="color:var(--accent); font-weight:700;">${item.rawValue}</td>
-                        <td style="color:${applyColor}; font-weight:800;">${displayApplied}</td>
-                        <td style="color:#10b981; font-weight:800;">${totalSoFar}</td>
-                    `;
-                    tbody.appendChild(tr);
-                }
-            }
         }
     });
     
@@ -267,7 +365,7 @@ function recalculateAndRender() {
         const totalEl = document.getElementById(`team-total-${t.id}`);
         const histSec = document.getElementById(`hist-sec-${t.id}`);
         
-        if(!summary || !totalEl) return;
+        if(!summary) return;
         
         summary.innerHTML = '';
         
@@ -289,7 +387,7 @@ function recalculateAndRender() {
             summary.appendChild(div);
         });
         
-        totalEl.textContent = teamTotal;
+        if(totalEl) totalEl.textContent = teamTotal;
         
         if (histSec) {
             histSec.scrollTop = histSec.scrollHeight;
