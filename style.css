@@ -1,0 +1,302 @@
+:root {
+  --overlay-bg: rgba(0, 0, 0, 0.7); 
+  --text-main: #ffffff;
+  --accent: #facc15;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Pretendard', sans-serif;
+}
+
+body {
+  background-color: transparent; 
+  color: var(--text-main);
+  padding: 20px;
+}
+
+.app-layout {
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+}
+
+#overlays-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+  max-width: 1000px; 
+}
+
+/* ==================================
+   오버레이 영역 (개별 표 상자)
+   ================================== */
+.overlay-container {
+  width: 320px; 
+  height: 300px;
+  background: var(--overlay-bg); 
+  border-radius: 16px; 
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.8);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.goal-section {
+  text-align: center;
+  padding-bottom: 5px;
+  border-bottom: 2px solid rgba(255,255,255,0.2);
+  position: relative;
+}
+
+.team-name-tag {
+  font-size: 14px;
+  font-weight: 700;
+  color: #aaa;
+  margin-bottom: 2px;
+  letter-spacing: 1px;
+}
+
+.goal-text {
+  font-size: 32px;
+  font-weight: 900;
+  text-shadow: 2px 2px 4px #000;
+  letter-spacing: -1px;
+  line-height: 1.1;
+}
+
+.goal-text span {
+  color: var(--accent);
+}
+
+/* 두 명이 한 줄에 들어오도록 하려면 공간이 충분해야 함 */
+.player-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: space-between;
+}
+
+.player-item {
+  background: rgba(255,255,255,0.12);
+  padding: 4px 6px;
+  border-radius: 6px;
+  /* 폭을 조금 넓게 써서 수식이 들어가게 확보 */
+  flex: 1 1 48%; 
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  font-size: 14px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.player-item .p-name {
+  /* 닉네임 길이를 적당히 자르거나 고정 */
+  min-width: 40px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 4px;
+  font-size: 13px;
+}
+
+.player-item .p-kill {
+  color: var(--accent);
+  font-size: 13px;
+  text-shadow: 1px 1px 2px #000;
+  white-space: nowrap;
+}
+
+.p-kill b {
+  font-size: 16px;
+  color: #fff;
+}
+
+.history-section {
+  flex: 1;
+  overflow-y: auto; 
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.history-section::-webkit-scrollbar {
+  display: none;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  font-size: 13px;
+}
+
+thead th {
+  padding: 6px 2px;
+  border-bottom: 2px solid rgba(255,255,255,0.2);
+  color: #ccc;
+  font-weight: 700;
+  position: sticky;
+  top: 0;
+  background: #111;
+  z-index: 2;
+}
+
+tbody td {
+  padding: 6px 2px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-weight: 600;
+}
+
+/* ==================================
+   컨트롤 영역 (설정 패널)
+   ================================== */
+.controls {
+  width: 360px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+.controls h3 {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.controls .desc {
+  font-size: 12px;
+  color: #8b949e;
+  margin-bottom: 15px;
+  line-height: 1.4;
+}
+
+.team-control-card {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 15px;
+}
+
+.team-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.team-name-input {
+  background: transparent;
+  color: #58a6ff;
+  border: none;
+  font-size: 16px;
+  font-weight: 900;
+  width: 150px;
+  outline: none;
+  border-bottom: 1px dashed #58a6ff;
+}
+
+.player-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.p-name-input {
+  /* 닉네임 인풋 */
+  padding: 8px;
+  background: #161b22;
+  color: #fff;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.p-name-input:focus {
+  border-color: #58a6ff;
+  outline: none;
+}
+
+.base-kill-input {
+  width: 38px;
+  padding: 8px 2px;
+  background: #111;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  font-size: 13px;
+  text-align: center;
+  font-weight: bold;
+}
+.pos-input { color: #3b82f6; } /* 양수 파란색 */
+.neg-input { color: #ef4444; } /* 음수 빨간색 */
+.base-kill-input:focus {
+  border-color: #58a6ff;
+  outline: none;
+}
+
+.manual-test-box {
+  margin-top: 25px;
+  padding: 15px;
+  background: #0d1117;
+  border-radius: 8px;
+  border: 1px dashed #58a6ff;
+}
+
+.manual-test-box h4 {
+  color: #58a6ff;
+}
+
+.manual-inputs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.manual-input {
+  flex: 2;
+  margin: 0;
+}
+
+.kill-num {
+  flex: 1;
+  text-align: center;
+}
+
+.manual-btn {
+  background: #1f6feb;
+}
+
+.divider {
+  height: 1px;
+  background: #30363d;
+  margin: 20px 0;
+}
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  color: #fff;
+}
+
+.btn:hover {
+  opacity: 0.8;
+}
+
+.btn.primary { background: #2f81f7; }
+.btn.secondary { background: #21262d; border: 1px solid #30363d; }
+.btn.danger { background: #da3633; }
+.btn.sm { width: auto; padding: 5px 10px; font-size: 12px; border-radius: 4px; }
